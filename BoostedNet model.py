@@ -110,14 +110,14 @@ gauth.credentials = GoogleCredentials.get_application_default()
 drive = GoogleDrive(gauth)
 
 # Get the ID of the zip file from Google Drive
-file_id = '1iXW69MzY5KKMu2mvH8w3YkxjvXnnkV0W'
+file_id = '1iXW69Mz'
 
 # Download the zip file to Google Colab
 downloaded = drive.CreateFile({'id': file_id})
-downloaded.GetContentFile('/content/drive/MyDrive/gastric histopathology/dataset/dataset.zip')
+downloaded.GetContentFile('/dataset/deephp.zip')
 
 
-!unzip '/content/drive/MyDrive/gastric histopathology/dataset/dataset.zip'
+!unzip '/dataset/deephp.zip'
 
 import cv2
 
@@ -151,7 +151,7 @@ for image_file in os.listdir(dataset_directory):
 """
 
 # count the number of images in respective classes 0- unaffected, 1 infected
-ROOT_DIR = '/content/dataset'
+ROOT_DIR = '/content/dataset/deephp'
 number_of_images={}
 
 for dir in os.listdir(ROOT_DIR):
@@ -227,10 +227,6 @@ validation_data1 = preprocessingImgaes1(path)
 path = '/content/test1'
 test_data1 = preprocessingImgaes1(path)
 
-#new cell added
-path = '/content/dataset'
-testing_data = preprocessingImgaes1(path)
-
 """## Visulization of images"""
 
 def show_batch(image_batch, label_batch):
@@ -251,14 +247,6 @@ image_batch, label_batch = next(iter(validation_data1))
 #print(label_batch)
 show_batch(image_batch, label_batch)
 
-"""<a name = '4'></a>
-#4 - Proposed CNN Model
- - model.add(Dense(units=64, activation='relu'))
-   - model.add(Dropout(rate=0.25))
-   - model.add(Dense(units = 256, activation = 'relu'))
-   - model.add(Dense(units = 1, activation = 'sigmoid'))
-
-"""
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPool2D, Dropout, Flatten, Dense
@@ -286,9 +274,6 @@ model.add(Dense(units=256, activation='relu'))
 model.add(Dense(units=1, activation='sigmoid'))
 
 model.summary()
-
-#model.compile(optimizer='sgd',loss=keras.losses.backend.binary_crossentropy,metrics=['accuracy'])
-
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy',
         keras.metrics.Precision(name="precision"),
         keras.metrics.Recall(name="recall")])
@@ -301,28 +286,12 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 es = EarlyStopping(monitor="val_accuracy",min_delta=0.01, patience = 20, verbose = 1, mode ='auto')
 
 #model check point
-mc = ModelCheckpoint(monitor="val_accuracy",filepath="/content/drive/MyDrive/gastric histopathology/model/DeepHp model/cnn_6layer.h5",verbose=1, save_best_only=True, mode="auto")
+mc = ModelCheckpoint(monitor="val_accuracy",filepath="/DeepHp model/cnn_6layer.h5",verbose=1, save_best_only=True, mode="auto")
 cd =[es,mc]
+gs = model.fit_generator(generator=train_data1, steps_per_epoch=8,epochs=100, verbose=1, validation_data=validation_data1,validation_steps =16, callbacks = cd)
+model.save("/DeepHp model/cnn_6layer_100 epochs.h5")
 
-# !pip install --upgrade tensorflow
-
-# gs = model.fit_generator(generator=train_data1, steps_per_epoch=8,epochs=100, verbose=1, validation_data=validation_data1,validation_steps =16, callbacks = cd)
-gs = model.fit_generator(generator=train_data1, steps_per_epoch=8,epochs=100, verbose=1, validation_data=validation_data1,validation_steps =16)
-
-model.save("/content/drive/MyDrive/gastric histopathology/model/DeepHp model/cnn_6layer_100 epochs.h5")
-
-model=load_model("/content/drive/MyDrive/gastric histopathology/model/DeepHp model/cnn_6layer_100 epochs.h5")
-
-"""<a name = '5'></a>
-#5 - Validation of CNN Model
-- H&E Stained Images
-- Giemsa Stained Images
-- Mixed images
-
-####DeepHP
-"""
-
-model = load_model('/content/drive/MyDrive/gastric histopathology/model/DeepHp model/cnn_6layer.h5')
+model=load_model("/DeepHp model/cnn_6layer_100 epochs.h5")
 
 #Testing of Model
 acc = model.evaluate_generator(validation_data1)[1]
@@ -405,8 +374,6 @@ y_pred = np.array(y_pred_1)
 y_pred = y_pred.flatten()
 y_pred
 
-#y_pred = [0.2, 0.8, 0.6, 0.3, 0.7]
-
 y_pred1 = [0 if val < 0.5 else 1 for val in y_pred]
 
 print("Complementary array:", y_pred1)
@@ -459,8 +426,6 @@ len(y_pred_2)
 
 y_predf = np.concatenate((y_pred, y_predc))
 len(y_predf)
-
-#y_pred = [0.2, 0.8, 0.6, 0.3, 0.7]
 
 y_predb = [0 if val < 0.5 else 1 for val in y_predf]
 
@@ -517,6 +482,7 @@ print("Precision= ",PRECISION*100)
 print("Recall = ",RECALL*100)
 print("F1_score = ",F1_SCORE*100)
 print("Mthews Correlation Coeffieicent = ",MCC*100)
+specificity = tn / (tn + fp)
 
 # Assuming 'y_true' contains the true labels and 'y_pred' contains the predicted probabilities
 auc = roc_auc_score(y_true, y_predb)
@@ -576,11 +542,19 @@ plt.title('Recall vs confidence Curve')
 plt.grid(True)
 plt.show()
 
-"""###Training and Validation of Model
+from sklearn.metrics import precision_recall_curve
+import matplotlib.pyplot as plt
 
-##Model Validation
+precision, recall, thresholds = precision_recall_curve(y_true, y_predb)
 
-###H&E +Giemsa stain
+plt.plot(thresholds, precision[:-1], label='Precision')
+
+plt.xlabel('Threshold')
+plt.ylabel('Precision')
+plt.legend()
+plt.title('Precision vs confidence Curve')
+plt.grid(False)
+plt.show()
 """
 
 #Graphical Interpretation
@@ -610,16 +584,10 @@ plt.ylabel('loss')
 plt.legend()
 plt.show()
 
-"""<a name ='6'></a>
-#6 - Gradient-weighted Class Activation Mapping
-
-###Weight saving
-"""
-
 weights = model.get_weights()
 
 # Save the weights to a file
-np.save('/content/drive/MyDrive/gastric histopathology/weights/DeepHP/DeepHp_100 epochs_weights.npy', weights)
+np.save('/DeepHP/DeepHp_100 epochs_weights.npy', weights)
 #print(weights)
 
 """##GradCAM"""
@@ -745,10 +713,6 @@ path = '/content/hpylori (1).jpg'
 print("In last Convolution layer")
 Grad(path,'conv2d_5')
 
-"""<a name ='7'></a>
-#7 - XGBoost
-
-###DeepHP
 """
 
 import numpy as np
@@ -839,6 +803,7 @@ print("Precision= ",PRECISION*100)
 print("Recall = ",RECALL*100)
 print("F1_score = ",F1_SCORE*100)
 print("Mthews Correlation Coeffieicent = ",MCC*100)
+
 
 # Assuming 'y_true' contains the true labels and 'y_pred' contains the predicted probabilities
 auc = roc_auc_score(test_labels, pred)
